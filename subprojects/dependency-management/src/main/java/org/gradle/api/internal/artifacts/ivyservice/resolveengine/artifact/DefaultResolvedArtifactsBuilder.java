@@ -16,23 +16,22 @@
 
 package org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact;
 
+import com.google.common.collect.Lists;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.DependencyGraphNode;
 import org.gradle.internal.component.local.model.LocalConfigurationMetadata;
 import org.gradle.internal.component.model.ConfigurationMetadata;
 
 import java.util.HashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
-
-import static com.google.common.collect.Maps.newLinkedHashMap;
 
 /**
  * Collects all artifacts and their build dependencies.
  */
 public class DefaultResolvedArtifactsBuilder implements DependencyArtifactsVisitor {
     private final boolean buildProjectDependencies;
-    private final Map<Long, ArtifactSet> artifactSets = newLinkedHashMap();
+    private final List<ArtifactSet> artifactSets = Lists.newArrayList();
     private final Set<Long> buildableArtifactSets = new HashSet<Long>();
 
     public DefaultResolvedArtifactsBuilder(boolean buildProjectDependencies) {
@@ -41,7 +40,7 @@ public class DefaultResolvedArtifactsBuilder implements DependencyArtifactsVisit
 
     @Override
     public void visitArtifacts(DependencyGraphNode from, DependencyGraphNode to, ArtifactSet artifacts) {
-        artifactSets.put(artifacts.getId(), artifacts);
+        artifactSets.add(artifacts);
 
         // Don't collect build dependencies if not required
         if (!buildProjectDependencies) {
@@ -75,13 +74,13 @@ public class DefaultResolvedArtifactsBuilder implements DependencyArtifactsVisit
     }
 
     public VisitedArtifactsResults complete() {
-        Map<Long, ArtifactSet> artifactsById = newLinkedHashMap();
+        List<ArtifactSet> snapshots = Lists.newArrayListWithCapacity(artifactSets.size());
 
-        for (Map.Entry<Long, ArtifactSet> entry : artifactSets.entrySet()) {
-            ArtifactSet resolvedArtifacts = entry.getValue().snapshot();
-            artifactsById.put(entry.getKey(), resolvedArtifacts);
+        for (ArtifactSet artifactSet : artifactSets) {
+            ArtifactSet resolvedArtifacts = artifactSet.snapshot();
+            snapshots.add(resolvedArtifacts);
         }
 
-        return new DefaultResolvedArtifactResults(artifactsById, buildableArtifactSets);
+        return new DefaultResolvedArtifactResults(snapshots, buildableArtifactSets);
     }
 }

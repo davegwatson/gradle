@@ -22,6 +22,7 @@ import org.gradle.api.attributes.HasAttributes;
 import org.gradle.api.specs.Spec;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,11 +30,11 @@ import static com.google.common.collect.Maps.newLinkedHashMap;
 import static com.google.common.collect.Sets.newLinkedHashSet;
 
 public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
-    private final Map<Long, ArtifactSet> artifactsById;
+    private final List<ArtifactSet> artifactSets;
     private final Set<Long> buildableArtifacts;
 
-    public DefaultResolvedArtifactResults(Map<Long, ArtifactSet> artifactsById, Set<Long> buildableArtifacts) {
-        this.artifactsById = artifactsById;
+    public DefaultResolvedArtifactResults(List<ArtifactSet> artifactSets, Set<Long> buildableArtifacts) {
+        this.artifactSets = artifactSets;
         this.buildableArtifacts = buildableArtifacts;
     }
 
@@ -42,9 +43,13 @@ public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
         Set<ResolvedArtifactSet> allArtifactSets = newLinkedHashSet();
         final Map<Long, ResolvedArtifactSet> resolvedArtifactsById = newLinkedHashMap();
 
-        for (Map.Entry<Long, ArtifactSet> entry : artifactsById.entrySet()) {
-            ArtifactSet artifactSet = entry.getValue();
+        for (ArtifactSet artifactSet : artifactSets) {
+            if (resolvedArtifactsById.containsKey(artifactSet.getId())) {
+                continue;
+            }
+
             if (!componentFilter.isSatisfiedBy(artifactSet.getComponentIdentifier())) {
+                resolvedArtifactsById.put(artifactSet.getId(), null);
                 continue;
             }
             Set<? extends ResolvedVariant> variants = artifactSet.getVariants();
@@ -59,7 +64,7 @@ public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
                 }
                 allArtifactSets.add(resolvedArtifacts);
             }
-            resolvedArtifactsById.put(entry.getKey(), resolvedArtifacts);
+            resolvedArtifactsById.put(artifactSet.getId(), resolvedArtifacts);
         }
 
         return new DefaultSelectedArtifactResults(CompositeArtifactSet.of(allArtifactSets), resolvedArtifactsById);
