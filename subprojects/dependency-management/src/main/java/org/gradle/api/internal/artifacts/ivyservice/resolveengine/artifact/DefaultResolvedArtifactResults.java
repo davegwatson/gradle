@@ -16,7 +16,9 @@
 
 package org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 import org.gradle.api.Transformer;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.attributes.HasAttributes;
@@ -33,11 +35,11 @@ import static com.google.common.collect.Sets.newLinkedHashSet;
 public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
     private final List<ArtifactSet> artifactSets;
     private final Set<Long> buildableArtifacts;
-    private final Map<Long, Set<ArtifactSet>> sortedNodeIds;
+    private final List<Long> sortedNodeIds;
 
     private final boolean consumerFirst = true;
 
-    public DefaultResolvedArtifactResults(List<ArtifactSet> artifactSets, Set<Long> buildableArtifacts, Map<Long, Set<ArtifactSet>> sortedNodeIds) {
+    public DefaultResolvedArtifactResults(List<ArtifactSet> artifactSets, Set<Long> buildableArtifacts, List<Long> sortedNodeIds) {
         this.artifactSets = artifactSets;
         this.buildableArtifacts = buildableArtifacts;
         this.sortedNodeIds = sortedNodeIds;
@@ -48,16 +50,7 @@ public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
         Set<ResolvedArtifactSet> allArtifactSets = newLinkedHashSet();
         final Map<Long, ResolvedArtifactSet> resolvedArtifactsById = newLinkedHashMap();
 
-        Iterable<ArtifactSet> iter = artifactSets;
-        if (consumerFirst) {
-            List<ArtifactSet> sorted = Lists.newArrayList();
-            for (Set<ArtifactSet> artifactSets: sortedNodeIds.values()) {
-                sorted.addAll(artifactSets);
-            }
-
-            iter = sorted;
-        }
-        for (ArtifactSet artifactSet : iter) {
+        for (ArtifactSet artifactSet : getArtifactSetsInOrder(consumerFirst)) {
             if (resolvedArtifactsById.containsKey(artifactSet.getId())) {
                 continue;
             }
@@ -82,6 +75,25 @@ public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
         }
 
         return new DefaultSelectedArtifactResults(CompositeArtifactSet.of(allArtifactSets), resolvedArtifactsById);
+    }
+
+    private Iterable<ArtifactSet> getArtifactSetsInOrder(boolean consumerFirst) {
+        if (consumerFirst) {
+            // Build a map to allow easy access to artifacts per node
+            Multimap<Long, ArtifactSet> artifactSetsByNodeId = ArrayListMultimap.create();
+            for (ArtifactSet artifactSet : artifactSets) {
+                artifactSetsByNodeId.put(artifactSet.getNodeId(), artifactSet);
+            }
+
+            // Build list of artifacts based on sorted node list
+            List<ArtifactSet> sorted = Lists.newArrayList();
+            for (Long nodeId : Lists.reverse(sortedNodeIds)) {
+                Collection<ArtifactSet> artifactSetsForNode = artifactSetsByNodeId.get(nodeId);
+                sorted.addAll(artifactSetsForNode);
+            }
+            return sorted;
+        }
+        return artifactSets;
     }
 
     private static class DefaultSelectedArtifactResults implements SelectedArtifactResults {

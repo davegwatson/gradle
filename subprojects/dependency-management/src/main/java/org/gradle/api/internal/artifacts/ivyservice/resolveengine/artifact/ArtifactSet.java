@@ -27,6 +27,12 @@ public interface ArtifactSet {
     long getId();
 
     /**
+     * The id of the node that 'owns' these artifacts.
+     * Note that a single node may have multiple artifact sets, when an incoming dependency explicitly list artifacts or exclusions.
+     */
+    long getNodeId();
+
+    /**
      * Take a snapshot of this set, doing whatever work is required to calculate the variants of this set.
      */
     ArtifactSet snapshot();
