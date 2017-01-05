@@ -163,6 +163,8 @@ public interface ResolvableDependencies {
      * By default, the view returns all files and artifacts, but this can be restricted by component identifier or by attributes.
      */
     interface ArtifactView {
+        enum SortOrder { DEFAULT, CONSUMER_FIRST, DEPENDENCY_FIRST }
+
         /**
          * Specify a filter for the components that should be included in this view.
          * Only artifacts from components matching the supplied filter will be returned by {@link #getFiles()} or {@link #getArtifacts()}.
@@ -178,6 +180,8 @@ public interface ResolvableDependencies {
          * This method cannot be called a multiple times for a view.
          */
         ArtifactView withAttributes(Map<?, ?> attributes);
+
+        ArtifactView orderBy(SortOrder order);
 
         /**
          * Returns the collection of artifacts matching the requested attributes that are sourced from Components matching the specified filter.

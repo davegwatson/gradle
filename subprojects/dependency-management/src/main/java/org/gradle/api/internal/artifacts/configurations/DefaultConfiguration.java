@@ -503,9 +503,13 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
     }
 
     private Set<File> doGetFiles(Spec<? super Dependency> dependencySpec, AttributeContainerInternal requestedAttributes, Spec<? super ComponentIdentifier> componentIdentifierSpec) {
+        return doGetFiles(dependencySpec, requestedAttributes, componentIdentifierSpec, ResolvableDependencies.ArtifactView.SortOrder.DEFAULT);
+    }
+
+    private Set<File> doGetFiles(Spec<? super Dependency> dependencySpec, AttributeContainerInternal requestedAttributes, Spec<? super ComponentIdentifier> componentIdentifierSpec, ResolvableDependencies.ArtifactView.SortOrder sortOrder) {
         synchronized (resolutionLock) {
             resolveToStateOrLater(ARTIFACTS_RESOLVED);
-            return cachedResolverResults.getVisitedArtifacts().select(dependencySpec, requestedAttributes, componentIdentifierSpec).collectFiles(new LinkedHashSet<File>());
+            return cachedResolverResults.getVisitedArtifacts().select(dependencySpec, requestedAttributes, componentIdentifierSpec, sortOrder).collectFiles(new LinkedHashSet<File>());
         }
     }
 
@@ -748,20 +752,23 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         private final Spec<? super Dependency> dependencySpec;
         private final AttributeContainerInternal viewAttributes;
         private final Spec<? super ComponentIdentifier> componentSpec;
+        private final ResolvableDependencies.ArtifactView.SortOrder sortOrder;
 
         private ConfigurationFileCollection(Spec<? super Dependency> dependencySpec) {
             assertResolvingAllowed();
             this.dependencySpec = dependencySpec;
             this.viewAttributes = DefaultConfiguration.this.configurationAttributes.asImmutable();
             this.componentSpec = Specs.satisfyAll();
+            this.sortOrder = ResolvableDependencies.ArtifactView.SortOrder.DEFAULT;
         }
 
         private ConfigurationFileCollection(Spec<? super Dependency> dependencySpec, AttributeContainerInternal viewAttributes,
-                                            Spec<? super ComponentIdentifier> componentSpec) {
+                                            Spec<? super ComponentIdentifier> componentSpec, ResolvableDependencies.ArtifactView.SortOrder sortOrder) {
             assertResolvingAllowed();
             this.dependencySpec = dependencySpec;
             this.viewAttributes = viewAttributes.asImmutable();
             this.componentSpec = componentSpec;
+            this.sortOrder = sortOrder;
         }
 
         private ConfigurationFileCollection(Closure dependencySpecClosure) {
@@ -790,7 +797,7 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         }
 
         public Set<File> getFiles() {
-            return doGetFiles(dependencySpec, viewAttributes, componentSpec);
+            return doGetFiles(dependencySpec, viewAttributes, componentSpec, sortOrder);
         }
     }
 
@@ -962,7 +969,7 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         public FileCollection getFiles(Map<?, ?> attributeMap, Spec<? super ComponentIdentifier> componentFilter) {
             AttributeContainerInternal attributes = configurationAttributes.copy();
             populateAttributesFromMap(attributeMap, attributes);
-            return new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), attributes, componentFilter);
+            return new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), attributes, componentFilter, ArtifactView.SortOrder.DEFAULT);
         }
 
         public DependencySet getDependencies() {
@@ -1004,7 +1011,7 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         public ArtifactCollection getArtifacts(Map<?, ?> attributeMap, Spec<? super ComponentIdentifier> componentFilter) {
             AttributeContainerInternal attributes = configurationAttributes.copy();
             populateAttributesFromMap(attributeMap, attributes);
-            return new ConfigurationArtifactCollection(attributes, componentFilter);
+            return new ConfigurationArtifactCollection(attributes, componentFilter, ArtifactView.SortOrder.DEFAULT);
         }
 
 
@@ -1015,6 +1022,7 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         private class ConfigurationViewBuilder implements ArtifactView {
             private AttributeContainerInternal viewAttributes;
             private Spec<? super ComponentIdentifier> viewFilter;
+            private SortOrder sortOrder = SortOrder.DEFAULT;
 
 
             @Override
@@ -1032,6 +1040,12 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
                 return this;
             }
 
+            @Override
+            public ArtifactView orderBy(SortOrder order) {
+                this.sortOrder = order;
+                return this;
+            }
+
             private void assertUnset(String method, Object value) {
                 if (value != null) {
                     throw new IllegalStateException("Cannot call " + method + " multiple times for view");
@@ -1040,12 +1054,12 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
 
             @Override
             public ArtifactCollection getArtifacts() {
-                return new ConfigurationArtifactCollection(getViewAttributes(), getViewFilter());
+                return new ConfigurationArtifactCollection(getViewAttributes(), getViewFilter(), sortOrder);
             }
 
             @Override
             public FileCollection getFiles() {
-                return new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), getViewAttributes(), getViewFilter());
+                return new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), getViewAttributes(), getViewFilter(), sortOrder);
             }
 
             private Spec<? super ComponentIdentifier> getViewFilter() {
@@ -1065,16 +1079,18 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         private final FileCollection fileCollection;
         private final AttributeContainerInternal viewAttributes;
         private final Spec<? super ComponentIdentifier> componentFilter;
+        private final ResolvableDependencies.ArtifactView.SortOrder sortOrder;
 
         ConfigurationArtifactCollection() {
-            this(configurationAttributes, Specs.<ComponentIdentifier>satisfyAll());
+            this(configurationAttributes, Specs.<ComponentIdentifier>satisfyAll(), ResolvableDependencies.ArtifactView.SortOrder.DEFAULT);
         }
 
-        ConfigurationArtifactCollection(AttributeContainerInternal attributes, Spec<? super ComponentIdentifier> componentFilter) {
+        ConfigurationArtifactCollection(AttributeContainerInternal attributes, Spec<? super ComponentIdentifier> componentFilter, ResolvableDependencies.ArtifactView.SortOrder sortOrder) {
             assertResolvingAllowed();
             this.viewAttributes = attributes.asImmutable();
             this.componentFilter = componentFilter;
-            this.fileCollection = new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), viewAttributes, this.componentFilter);
+            this.sortOrder = sortOrder;
+            this.fileCollection = new ConfigurationFileCollection(Specs.<Dependency>satisfyAll(), viewAttributes, this.componentFilter, this.sortOrder);
         }
 
         @Override
@@ -1085,7 +1101,7 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
         @Override
         public Set<ResolvedArtifactResult> getArtifacts() {
             resolveToStateOrLater(ARTIFACTS_RESOLVED);
-            SelectedArtifactSet artifactSet = cachedResolverResults.getVisitedArtifacts().select(Specs.<Dependency>satisfyAll(), viewAttributes, componentFilter);
+            SelectedArtifactSet artifactSet = cachedResolverResults.getVisitedArtifacts().select(Specs.<Dependency>satisfyAll(), viewAttributes, componentFilter, sortOrder);
             return artifactSet.collectArtifacts(new LinkedHashSet<ResolvedArtifactResult>());
         }
 

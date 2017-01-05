@@ -20,6 +20,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import org.gradle.api.Transformer;
+import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.attributes.HasAttributes;
 import org.gradle.api.specs.Spec;
@@ -46,11 +47,11 @@ public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
     }
 
     @Override
-    public SelectedArtifactResults select(Spec<? super ComponentIdentifier> componentFilter, Transformer<HasAttributes, Collection<? extends HasAttributes>> selector) {
+    public SelectedArtifactResults select(Spec<? super ComponentIdentifier> componentFilter, Transformer<HasAttributes, Collection<? extends HasAttributes>> selector, ResolvableDependencies.ArtifactView.SortOrder sortOrder) {
         Set<ResolvedArtifactSet> allArtifactSets = newLinkedHashSet();
         final Map<Long, ResolvedArtifactSet> resolvedArtifactsById = newLinkedHashMap();
 
-        for (ArtifactSet artifactSet : getArtifactSetsInOrder(consumerFirst)) {
+        for (ArtifactSet artifactSet : getArtifactSetsInOrder(sortOrder)) {
             if (resolvedArtifactsById.containsKey(artifactSet.getId())) {
                 continue;
             }
@@ -77,23 +78,32 @@ public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
         return new DefaultSelectedArtifactResults(CompositeArtifactSet.of(allArtifactSets), resolvedArtifactsById);
     }
 
-    private Iterable<ArtifactSet> getArtifactSetsInOrder(boolean consumerFirst) {
-        if (consumerFirst) {
-            // Build a map to allow easy access to artifacts per node
-            Multimap<Long, ArtifactSet> artifactSetsByNodeId = ArrayListMultimap.create();
-            for (ArtifactSet artifactSet : artifactSets) {
-                artifactSetsByNodeId.put(artifactSet.getNodeId(), artifactSet);
-            }
-
-            // Build list of artifacts based on sorted node list
-            List<ArtifactSet> sorted = Lists.newArrayList();
-            for (Long nodeId : Lists.reverse(sortedNodeIds)) {
-                Collection<ArtifactSet> artifactSetsForNode = artifactSetsByNodeId.get(nodeId);
-                sorted.addAll(artifactSetsForNode);
-            }
-            return sorted;
+    private Iterable<ArtifactSet> getArtifactSetsInOrder(ResolvableDependencies.ArtifactView.SortOrder sortOrder) {
+        switch (sortOrder) {
+            case DEPENDENCY_FIRST:
+                return getSorted(sortedNodeIds);
+            case CONSUMER_FIRST:
+                return getSorted(Lists.reverse(sortedNodeIds));
+            case DEFAULT:
+            default:
+                return artifactSets;
         }
-        return artifactSets;
+    }
+
+    private Iterable<ArtifactSet> getSorted(List<Long> sortedNodeIds) {
+        // Build a map to allow easy access to artifacts per node
+        Multimap<Long, ArtifactSet> artifactSetsByNodeId = ArrayListMultimap.create();
+        for (ArtifactSet artifactSet : artifactSets) {
+            artifactSetsByNodeId.put(artifactSet.getNodeId(), artifactSet);
+        }
+
+        // Build list of artifacts based on sorted node list
+        List<ArtifactSet> sorted = Lists.newArrayList();
+        for (Long nodeId : sortedNodeIds) {
+            Collection<ArtifactSet> artifactSetsForNode = artifactSetsByNodeId.get(nodeId);
+            sorted.addAll(artifactSetsForNode);
+        }
+        return sorted;
     }
 
     private static class DefaultSelectedArtifactResults implements SelectedArtifactResults {

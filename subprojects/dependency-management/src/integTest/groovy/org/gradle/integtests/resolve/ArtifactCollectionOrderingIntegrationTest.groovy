@@ -40,7 +40,9 @@ class ArtifactCollectionOrderingIntegrationTest extends AbstractHttpDependencyRe
 
             task checkArtifacts {
                 doLast {
-                    assert configurations.compile.collect { it.name } == ['A-1.0.jar', 'B-1.0.jar', 'C-1.0.jar', 'D-1.0.jar']
+                    assert configurations.compile.incoming.artifactView().orderBy(ResolvableDependencies.ArtifactView.SortOrder.CONSUMER_FIRST).files.collect { it.name } == ['A-1.0.jar', 'B-1.0.jar', 'C-1.0.jar', 'D-1.0.jar']
+                    assert configurations.compile.incoming.artifactView().orderBy(ResolvableDependencies.ArtifactView.SortOrder.DEPENDENCY_FIRST).files.collect { it.name } == ['D-1.0.jar', 'C-1.0.jar', 'B-1.0.jar', 'A-1.0.jar']
+                    assert configurations.compile.incoming.artifactView().orderBy(ResolvableDependencies.ArtifactView.SortOrder.DEFAULT).files.collect { it.name } == configurations.compile.files.collect { it.name }
                 }
             }
 """

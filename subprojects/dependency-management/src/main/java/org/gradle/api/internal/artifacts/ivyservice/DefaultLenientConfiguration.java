@@ -23,6 +23,7 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.LenientConfiguration;
 import org.gradle.api.artifacts.ModuleDependency;
+import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
@@ -88,14 +89,19 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Visite
         this.fileDependencyResults = fileDependencyResults;
         this.transientConfigurationResultsFactory = transientConfigurationResultsLoader;
         this.artifactTransformer = artifactTransformer;
-        selectedArtifacts = artifactResults.select(Specs.<ComponentIdentifier>satisfyAll(), artifactTransformer.variantSelector(configuration.getAttributes()));
+        selectedArtifacts = artifactResults.select(Specs.<ComponentIdentifier>satisfyAll(), artifactTransformer.variantSelector(configuration.getAttributes()), ResolvableDependencies.ArtifactView.SortOrder.DEFAULT);
         selectedFileDependencies = fileDependencyResults.select(artifactTransformer.variantSelector(configuration.getAttributes()));
     }
 
     @Override
-    public SelectedArtifactSet select(final Spec<? super Dependency> dependencySpec, final AttributeContainerInternal requestedAttributes, final Spec<? super ComponentIdentifier> componentSpec) {
+    public SelectedArtifactSet select(Spec<? super Dependency> dependencySpec, AttributeContainerInternal requestedAttributes, Spec<? super ComponentIdentifier> componentSpec) {
+        return select(dependencySpec, requestedAttributes, componentSpec, ResolvableDependencies.ArtifactView.SortOrder.DEFAULT);
+    }
+
+    @Override
+    public SelectedArtifactSet select(final Spec<? super Dependency> dependencySpec, final AttributeContainerInternal requestedAttributes, final Spec<? super ComponentIdentifier> componentSpec, ResolvableDependencies.ArtifactView.SortOrder sortOrder) {
         Transformer<HasAttributes, Collection<? extends HasAttributes>> selector = artifactTransformer.variantSelector(requestedAttributes);
-        final SelectedArtifactResults artifactResults = this.artifactResults.select(componentSpec, selector);
+        final SelectedArtifactResults artifactResults = this.artifactResults.select(componentSpec, selector, sortOrder);
         final SelectedFileDependencyResults fileDependencyResults = this.fileDependencyResults.select(selector);
         return new SelectedArtifactSet() {
             @Override

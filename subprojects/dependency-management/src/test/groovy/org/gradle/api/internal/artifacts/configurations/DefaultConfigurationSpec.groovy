@@ -28,6 +28,7 @@ import org.gradle.api.artifacts.DependencyResolutionListener
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.artifacts.PublishArtifact
 import org.gradle.api.artifacts.ResolvableDependencies
+import org.gradle.api.artifacts.ResolvableDependencies.ArtifactView.SortOrder
 import org.gradle.api.artifacts.ResolveException
 import org.gradle.api.artifacts.ResolvedConfiguration
 import org.gradle.api.artifacts.SelfResolvingDependency
@@ -445,7 +446,7 @@ class DefaultConfigurationSpec extends Specification {
         def localComponentsResult = Stub(ResolvedLocalComponentsResult)
         def visitedArtifactSet = Stub(VisitedArtifactSet)
 
-        _ * visitedArtifactSet.select(_, _, _) >> Stub(SelectedArtifactSet) {
+        _ * visitedArtifactSet.select(_, _, _, _) >> Stub(SelectedArtifactSet) {
             collectFiles(_) >> { it[0].addAll(files); return it[0] }
         }
 
@@ -462,7 +463,7 @@ class DefaultConfigurationSpec extends Specification {
         def visitedArtifactSet = Stub(VisitedArtifactSet)
         def resolvedConfiguration = Stub(ResolvedConfiguration)
 
-        _ * visitedArtifactSet.select(_, _, _) >> Stub(SelectedArtifactSet) {
+        _ * visitedArtifactSet.select(_, _, _, _) >> Stub(SelectedArtifactSet) {
             collectFiles(_) >> { throw failure }
         }
         _ * resolvedConfiguration.hasError() >> true
@@ -965,7 +966,7 @@ class DefaultConfigurationSpec extends Specification {
         localComponentsResult.resolvedProjectConfigurations >> []
         def visitedArtifactSet = Mock(VisitedArtifactSet)
 
-        _ * visitedArtifactSet.select(_, _, _) >> Stub(SelectedArtifactSet) {
+        _ * visitedArtifactSet.select(_, _, _, _) >> Stub(SelectedArtifactSet) {
             collectFiles(_) >> { return it[0] }
         }
 
@@ -1462,6 +1463,11 @@ All Artifacts:
 
     private visitedArtifacts() {
         def visitedArtifactSet = new VisitedArtifactSet() {
+            @Override
+            SelectedArtifactSet select(Spec<? super Dependency> dependencySpec, AttributeContainerInternal requestedAttributes, Spec<? super ComponentIdentifier> componentSpec, SortOrder sortOrder) {
+                return select(dependencySpec, requestedAttributes, componentSpec);
+            }
+
             @Override
             SelectedArtifactSet select(Spec<? super Dependency> dependencySpec, AttributeContainerInternal attributes, Spec<? super ComponentIdentifier> componentSpec) {
                 return new SelectedArtifactSet() {

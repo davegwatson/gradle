@@ -19,6 +19,7 @@ import groovy.lang.Closure;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.LenientConfiguration;
+import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
@@ -352,6 +353,11 @@ public class ErrorHandlingConfigurationResolver implements ConfigurationResolver
 
         @Override
         public SelectedArtifactSet select(Spec<? super Dependency> dependencySpec, AttributeContainerInternal requestedAttributes, Spec<? super ComponentIdentifier> componentSpec) {
+            return this;
+        }
+
+        @Override
+        public SelectedArtifactSet select(Spec<? super Dependency> dependencySpec, AttributeContainerInternal requestedAttributes, Spec<? super ComponentIdentifier> componentSpec, ResolvableDependencies.ArtifactView.SortOrder sortOrder) {
             return this;
         }
 

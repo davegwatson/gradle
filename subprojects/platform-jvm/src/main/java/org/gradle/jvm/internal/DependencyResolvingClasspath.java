@@ -18,6 +18,7 @@ package org.gradle.jvm.internal;
 
 import org.gradle.api.Nullable;
 import org.gradle.api.Transformer;
+import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.attributes.AttributesSchema;
@@ -186,7 +187,7 @@ public class DependencyResolvingClasspath extends AbstractFileCollection {
                     // Select the first variant
                     return hasAttributes.iterator().next();
                 }
-            });
+            }, ResolvableDependencies.ArtifactView.SortOrder.DEFAULT);
         }
     }
 }
