@@ -16,6 +16,7 @@
 
 package org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact;
 
+import com.google.common.collect.Lists;
 import org.gradle.api.Transformer;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.attributes.HasAttributes;
@@ -32,10 +33,14 @@ import static com.google.common.collect.Sets.newLinkedHashSet;
 public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
     private final List<ArtifactSet> artifactSets;
     private final Set<Long> buildableArtifacts;
+    private final Map<Long, Set<ArtifactSet>> sortedNodeIds;
 
-    public DefaultResolvedArtifactResults(List<ArtifactSet> artifactSets, Set<Long> buildableArtifacts) {
+    private final boolean consumerFirst = true;
+
+    public DefaultResolvedArtifactResults(List<ArtifactSet> artifactSets, Set<Long> buildableArtifacts, Map<Long, Set<ArtifactSet>> sortedNodeIds) {
         this.artifactSets = artifactSets;
         this.buildableArtifacts = buildableArtifacts;
+        this.sortedNodeIds = sortedNodeIds;
     }
 
     @Override
@@ -43,7 +48,16 @@ public class DefaultResolvedArtifactResults implements VisitedArtifactsResults {
         Set<ResolvedArtifactSet> allArtifactSets = newLinkedHashSet();
         final Map<Long, ResolvedArtifactSet> resolvedArtifactsById = newLinkedHashMap();
 
-        for (ArtifactSet artifactSet : artifactSets) {
+        Iterable<ArtifactSet> iter = artifactSets;
+        if (consumerFirst) {
+            List<ArtifactSet> sorted = Lists.newArrayList();
+            for (Set<ArtifactSet> artifactSets: sortedNodeIds.values()) {
+                sorted.addAll(artifactSets);
+            }
+
+            iter = sorted;
+        }
+        for (ArtifactSet artifactSet : iter) {
             if (resolvedArtifactsById.containsKey(artifactSet.getId())) {
                 continue;
             }
