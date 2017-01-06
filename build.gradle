@@ -215,8 +215,8 @@ allprojects {
 
     repositories {
         maven { url 'https://repo.gradle.org/gradle/libs-snapshots' }
-        maven { url 'https://repo.gradle.org/gradle/libs-milestones' }
         maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+        maven { url 'http://dl.bintray.com/kotlin/kotlin-eap-1.1' }
     }
 
     // Force clean tasks to run before any other tasks 
@@ -284,6 +284,9 @@ patchedExternalModules.builtBy 'patchExternalModules'
 
 dependencies {
     externalModules 'org.gradle:gradle-script-kotlin:0.7.0-SNAPSHOT'
+    coreRuntime 'org.jetbrains.kotlin:kotlin-compiler-embeddable:1.1-M04'
+    coreRuntime 'org.jetbrains.kotlin:kotlin-stdlib:1.1-M04'
+    coreRuntime 'org.jetbrains.kotlin:kotlin-reflect:1.1-M04'
     coreRuntime project(':launcher')
     runtime project(':wrapper')
     runtime project(":installationBeacon")
